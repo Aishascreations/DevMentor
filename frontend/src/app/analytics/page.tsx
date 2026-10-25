@@ -5,14 +5,14 @@ import { getToken } from "@/lib/api";
 
 interface MasteryData {
   topic: string;
-  mastery_score: float;
+  mastery_score: number;
   quiz_count: number;
   status: string;
 }
 
 interface WeakAlert {
   topic: string;
-  mastery_score: float;
+  mastery_score: number;
   recommendation: string;
 }
 
@@ -161,3 +161,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
