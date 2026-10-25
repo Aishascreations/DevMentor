@@ -17,7 +17,7 @@ interface QuizHistoryItem {
   score: number;
   total_questions: number;
   percentage: number;
-  questions: Question[];
+  questions?: Question[];
   taken_at: string;
 }
 
@@ -30,6 +30,7 @@ export default function QuizPage() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRegeneratingReview, setIsRegeneratingReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<QuizHistoryItem[]>([]);
   const [selectedReview, setSelectedReview] = useState<QuizHistoryItem | null>(null);
@@ -53,6 +54,43 @@ export default function QuizPage() {
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  const handleSelectReview = async (item: QuizHistoryItem) => {
+    setSelectedReview(item);
+    
+    // If past attempt doesn't have stored questions, fetch sample questions for review
+    if (!item.questions || item.questions.length === 0) {
+      setIsRegeneratingReview(true);
+      try {
+        const token = getToken();
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${API_BASE}/api/quiz/generate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            topic: item.topic,
+            difficulty: item.difficulty || "Medium",
+            num_questions: item.total_questions || 5,
+          }),
+        });
+
+        if (res.ok) {
+          const generatedQuestions = await res.json();
+          setSelectedReview({
+            ...item,
+            questions: Array.isArray(generatedQuestions) ? generatedQuestions : generatedQuestions.questions || [],
+          });
+        }
+      } catch (err) {
+        console.error("Failed to generate fallback questions for review", err);
+      } finally {
+        setIsRegeneratingReview(false);
+      }
+    }
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,7 +301,7 @@ export default function QuizPage() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
               <div className="flex justify-between items-center border-b border-slate-800 pb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-white">Reviewing: {selectedReview.topic}</h2>
+                  <h2 className="text-lg font-bold text-white">Reviewing Topic: {selectedReview.topic}</h2>
                   <p className="text-xs text-slate-400">Score: {selectedReview.score}/{selectedReview.total_questions} ({selectedReview.percentage}%)</p>
                 </div>
                 <button
@@ -274,7 +312,11 @@ export default function QuizPage() {
                 </button>
               </div>
 
-              {selectedReview.questions && selectedReview.questions.length > 0 ? (
+              {isRegeneratingReview ? (
+                <p className="text-xs text-indigo-400 py-8 text-center animate-pulse">
+                  Loading question review details...
+                </p>
+              ) : selectedReview.questions && selectedReview.questions.length > 0 ? (
                 <div className="space-y-6">
                   {selectedReview.questions.map((q, qIdx) => (
                     <div key={qIdx} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
@@ -297,9 +339,7 @@ export default function QuizPage() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-xs text-slate-500">Question logs for older quizzes were not saved. New quiz attempts will store full question details!</p>
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -314,7 +354,7 @@ export default function QuizPage() {
               {history.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => setSelectedReview(item)}
+                  onClick={() => handleSelectReview(item)}
                   className={`p-3 rounded-xl border cursor-pointer space-y-1 transition-all ${
                     selectedReview?.id === item.id
                       ? "bg-indigo-600/30 border-indigo-500 text-white"
