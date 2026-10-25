@@ -1,9 +1,18 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+﻿const RAW_API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Ensure API_BASE always points to the backend root without trailing slashes
+const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
 
 /**
- * Retrieves the JWT token from localStorage.
- * Checks both 'devmentor_token' and 'token' keys for cross-compatibility.
+ * Normalizes endpoint paths to ensure they start with /api if not already present.
  */
+function normalizeEndpoint(endpoint: string): string {
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  if (cleanEndpoint.startsWith("/api/")) {
+    return cleanEndpoint;
+  }
+  return `/api${cleanEndpoint}`;
+}
+
 export function getToken(): string | null {
   if (typeof window !== "undefined") {
     return (
@@ -42,7 +51,9 @@ export async function apiFetch<T = any>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const fullUrl = `${API_BASE}${normalizeEndpoint(endpoint)}`;
+
+  const response = await fetch(fullUrl, {
     ...options,
     headers,
   });
@@ -57,10 +68,6 @@ export async function apiFetch<T = any>(
   return response.json();
 }
 
-/**
- * Streams Server-Sent Events (SSE) from the FastAPI backend.
- * Parses incoming chunks cleanly without word duplication or extra spaces.
- */
 export async function streamSSE(
   endpoint: string,
   body: any,
@@ -76,7 +83,9 @@ export async function streamSSE(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const fullUrl = `${API_BASE}${normalizeEndpoint(endpoint)}`;
+
+  const response = await fetch(fullUrl, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
@@ -90,7 +99,6 @@ export async function streamSSE(
     );
   }
 
-  // Handle standard JSON response fallback if server returns non-streaming JSON
   const contentType = response.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
     const data = await response.json();
@@ -121,7 +129,7 @@ export async function streamSSE(
     for (const line of lines) {
       if (!line.startsWith("data: ")) continue;
 
-      const rawData = line.slice(6); // Slice 'data: ' keeping exact character contents
+      const rawData = line.slice(6);
 
       if (rawData.trim() === "[DONE]") {
         if (onComplete) onComplete();
@@ -131,10 +139,13 @@ export async function streamSSE(
       try {
         const parsed = JSON.parse(rawData);
         if (parsed.token !== undefined) {
-          onToken(parsed.token); // Safely invoke onToken without fallback double-firing
+          onToken(parsed.token);
+        } else if (parsed.text !== undefined) {
+          onToken(parsed.text);
+        } else if (parsed.content !== undefined) {
+          onToken(parsed.content);
         }
       } catch {
-        // Plain string fallback if chunk is not valid JSON
         onToken(rawData);
       }
     }
