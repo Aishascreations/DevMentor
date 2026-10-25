@@ -63,11 +63,11 @@ export default function NotesPage() {
       }
 
       const data = await res.json();
-      setStatusMessage(`✅ Successfully indexed "${data.filename}" (${data.chunk_count} vector chunks generated).`);
+      setStatusMessage(`Successfully indexed "${data.filename}" (${data.chunk_count} vector chunks generated).`);
       setFile(null);
       fetchDocuments();
     } catch (err: any) {
-      setStatusMessage(`❌ Error: ${err.message}`);
+      setStatusMessage(`Error: ${err.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -86,17 +86,17 @@ export default function NotesPage() {
 
       if (res.ok) {
         setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
-        setStatusMessage("✅ Document removed successfully.");
+        setStatusMessage("Document removed successfully.");
       }
     } catch (err: any) {
-      setStatusMessage(`❌ Delete failed: ${err.message}`);
+      setStatusMessage(`Delete failed: ${err.message}`);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">📚 Knowledge Base & PDF Notes</h1>
+        <h1 className="text-2xl font-bold text-white">Knowledge Base & PDF Notes</h1>
         <p className="text-sm text-slate-400">
           Upload course notes and PDFs to enable grounded vector search and RAG citations.
         </p>
@@ -125,7 +125,7 @@ export default function NotesPage() {
         </button>
 
         {statusMessage && (
-          <div className={`p-4 rounded-xl text-sm ${statusMessage.startsWith("❌") ? "bg-red-950/50 text-red-400 border border-red-800" : "bg-emerald-950/50 text-emerald-400 border border-emerald-800"}`}>
+          <div className={`p-4 rounded-xl text-sm ${statusMessage.startsWith("Error") ? "bg-red-950/50 text-red-400 border border-red-800" : "bg-emerald-950/50 text-emerald-400 border border-emerald-800"}`}>
             {statusMessage}
           </div>
         )}

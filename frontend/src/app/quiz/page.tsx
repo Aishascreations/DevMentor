@@ -31,6 +31,7 @@ export default function QuizPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<QuizHistoryItem[]>([]);
+  const [reviewQuiz, setReviewQuiz] = useState<QuizHistoryItem | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -62,6 +63,7 @@ export default function QuizPage() {
     setCurrentIdx(0);
     setSelectedAnswers({});
     setShowResults(false);
+    setReviewQuiz(null);
 
     try {
       const token = getToken();
@@ -128,7 +130,7 @@ export default function QuizPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-white">🎯 Practice Quiz Generator</h1>
+      <h1 className="text-2xl font-bold text-white">Adaptive Quiz Generator</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -182,6 +184,7 @@ export default function QuizPage() {
             {error && <p className="text-xs text-red-400 text-center">{error}</p>}
           </form>
 
+          {/* Active Quiz Card */}
           {questions.length > 0 && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
               <div className="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800 pb-4">
@@ -194,8 +197,15 @@ export default function QuizPage() {
               <div className="space-y-3">
                 {questions[currentIdx]?.options.map((opt, oIdx) => {
                   const isSelected = selectedAnswers[currentIdx] === oIdx;
+                  const isCorrect = questions[currentIdx].correct_index === oIdx;
+
                   let btnStyle = "bg-slate-800 border-slate-700 text-slate-200";
                   if (isSelected) btnStyle = "bg-indigo-600/30 border-indigo-500 text-white font-medium";
+
+                  if (showResults) {
+                    if (isCorrect) btnStyle = "bg-emerald-950/60 border-emerald-500 text-emerald-200";
+                    else if (isSelected && !isCorrect) btnStyle = "bg-red-950/60 border-red-500 text-red-200";
+                  }
 
                   return (
                     <button
@@ -208,6 +218,13 @@ export default function QuizPage() {
                   );
                 })}
               </div>
+
+              {showResults && (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
+                  <p className="font-bold text-indigo-400">Explanation:</p>
+                  <p>{questions[currentIdx]?.explanation}</p>
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-4 border-t border-slate-800">
                 <button
@@ -242,13 +259,17 @@ export default function QuizPage() {
 
         {/* Quiz History Sidebar */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h2 className="text-base font-bold text-white border-b border-slate-800 pb-2">📊 Past Quiz Attempts</h2>
+          <h2 className="text-base font-bold text-white border-b border-slate-800 pb-2">Past Quiz Attempts</h2>
           {history.length === 0 ? (
             <p className="text-xs text-slate-500">No past quiz attempts found.</p>
           ) : (
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
               {history.map((item) => (
-                <div key={item.id} className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/60 space-y-1">
+                <div
+                  key={item.id}
+                  onClick={() => setReviewQuiz(item)}
+                  className="p-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700/60 cursor-pointer space-y-1 transition-all"
+                >
                   <div className="flex justify-between text-xs font-medium">
                     <span className="text-indigo-400 font-bold">{item.topic}</span>
                     <span className="text-emerald-400 font-bold">{item.score}/{item.total_questions} ({item.percentage}%)</span>
