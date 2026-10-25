@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+﻿import fitz  # PyMuPDF
 import json
 import uuid
 import os
@@ -9,7 +9,7 @@ from sqlalchemy import select
 from openai import AsyncOpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config import settings
 from app.models import Document
