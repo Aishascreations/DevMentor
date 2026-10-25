@@ -1,13 +1,15 @@
 ﻿"use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { removeToken } from "@/lib/api";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [imageError, setImageError] = useState(false);
 
   if (pathname === "/login") return null;
 
@@ -28,22 +30,39 @@ export default function Sidebar() {
     <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col justify-between h-screen sticky top-0">
       <div className="p-6 space-y-6">
         <div className="flex items-center space-x-3">
-          {/* Logo Icon */}
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+          {/* Logo Container */}
+          <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 shadow-md shadow-indigo-600/10">
+            {!imageError ? (
+              <Image
+                src="/logo.png"
+                alt="DevMentor Logo"
+                width={36}
+                height={36}
+                className="object-cover w-full h-full"
+                onError={() => setImageError(true)}
               />
-            </svg>
+            ) : (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 14l9-5-9-5-9 5 9 5z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
+                />
+              </svg>
+            )}
           </div>
           <span className="font-bold text-lg text-white tracking-tight">DevMentor</span>
         </div>
