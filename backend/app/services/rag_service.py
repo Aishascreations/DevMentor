@@ -1,7 +1,6 @@
-﻿import fitz  # PyMuPDF
+﻿import fitz
 import json
 import uuid
-import os
 from typing import List, AsyncGenerator
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,61 +14,41 @@ from app.config import settings
 from app.models import Document
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-qdrant = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
 
+# Handle both cloud URL (https://...) and local Docker host
+qdrant_host = getattr(settings, "QDRANT_HOST", "localhost")
+qdrant_api_key = getattr(settings, "QDRANT_API_KEY", None)
+
+if qdrant_host.startswith("http://") or qdrant_host.startswith("https://"):
+    qdrant = QdrantClient(url=qdrant_host, api_key=qdrant_api_key)
+else:
+    qdrant = QdrantClient(host=qdrant_host, port=getattr(settings, "QDRANT_PORT", 6333), api_key=qdrant_api_key)
 
 class RAGService:
-
-    @classmethod
-    async def generate_stream(cls, query: str) -> AsyncGenerator[str, None]:
-        """FR-06: General LLM chat streaming method yielding raw token deltas."""
-        try:
-            response = await client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are DevMentor, a helpful Computer Science tutor and technical assistant.",
-                    },
-                    {"role": "user", "content": query},
-                ],
-                stream=True,
-            )
-
-            async for chunk in response:
-                content = chunk.choices[0].delta.content or ""
-                if content:
-                    yield content
-
-        except Exception as e:
-            yield f"\n[OpenAI Stream Error: {str(e)}]"
-
     @staticmethod
     def _ensure_collection_exists(collection_name: str):
-        """Ensures Qdrant vector collection exists for the user space."""
         collections = qdrant.get_collections().collections
         exists = any(c.name == collection_name for c in collections)
         if not exists:
             qdrant.create_collection(
                 collection_name=collection_name,
                 vectors_config=qmodels.VectorParams(
-                    size=1536,  # text-embedding-ada-002 dimension
-                    distance=qmodels.Distance.COSINE,
-                ),
+                    size=1536,
+                    distance=qmodels.Distance.COSINE
+                )
             )
 
     @staticmethod
     async def process_pdf_and_index(
         db: AsyncSession, user_id: UUID, file_bytes: bytes, filename: str
     ) -> Document:
-        """FR-12, FR-13, FR-14: Ingest PDF, chunk text, embed, and store in Qdrant."""
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         page_count = len(doc)
 
         raw_chunks = []
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=2000,  # ~500 tokens
-            chunk_overlap=200,  # ~50 tokens
+            chunk_size=2000,
+            chunk_overlap=200
         )
 
         for page_idx in range(page_count):
@@ -80,9 +59,10 @@ class RAGService:
 
             splits = text_splitter.split_text(text)
             for split in splits:
-                raw_chunks.append(
-                    {"text": split, "page_number": page_idx + 1}
-                )
+                raw_chunks.append({
+                    "text": split,
+                    "page_number": page_idx + 1
+                })
 
         doc.close()
 
@@ -96,99 +76,100 @@ class RAGService:
         chunk_texts = [c["text"] for c in raw_chunks]
 
         response = await client.embeddings.create(
-            model="text-embedding-ada-002", input=chunk_texts
+            model="text-embedding-3-small",
+            input=chunk_texts
         )
         embeddings = [data.embedding for data in response.data]
 
         points = []
-        for idx, (chunk_data, embedding) in enumerate(
-            zip(raw_chunks, embeddings)
-        ):
+        for idx, (chunk_data, embedding) in enumerate(zip(raw_chunks, embeddings)):
             point_id = str(uuid.uuid4())
-            points.append(
-                qmodels.PointStruct(
-                    id=point_id,
-                    vector=embedding,
-                    payload={
-                        "document_id": str(doc_id),
-                        "filename": filename,
-                        "page_number": chunk_data["page_number"],
-                        "chunk_index": idx,
-                        "text": chunk_data["text"],
-                    },
-                )
-            )
+            points.append(qmodels.PointStruct(
+                id=point_id,
+                vector=embedding,
+                payload={
+                    "document_id": str(doc_id),
+                    "filename": filename,
+                    "page_number": chunk_data["page_number"],
+                    "chunk_index": idx,
+                    "text": chunk_data["text"]
+                }
+            ))
 
         qdrant.upsert(collection_name=collection_name, points=points)
 
-        new_document = Document(
+        new_doc = Document(
             id=doc_id,
             user_id=user_id,
             filename=filename,
             file_size_bytes=len(file_bytes),
             page_count=page_count,
-            chunk_count=len(raw_chunks),
-            qdrant_collection=collection_name,
+            chunk_count=len(points),
+            qdrant_collection=collection_name
         )
-        db.add(new_document)
+        db.add(new_doc)
         await db.commit()
-        await db.refresh(new_document)
+        await db.refresh(new_doc)
+        return new_doc
 
-        return new_document
+    @staticmethod
+    async def generate_stream(prompt: str) -> AsyncGenerator[str, None]:
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are DevMentor, an expert AI software engineering tutor."},
+                {"role": "user", "content": prompt}
+            ],
+            stream=True
+        )
+        async for chunk in response:
+            token = chunk.choices[0].delta.content or ""
+            if token:
+                yield token
 
     @staticmethod
     async def query_notes_stream(
-        user_id: UUID, query: str
+        user_id: UUID, query_text: str
     ) -> AsyncGenerator[str, None]:
-        """FR-15 & FR-16: Semantic lookup in Qdrant and grounded LLM generation."""
         collection_name = f"user_{str(user_id).replace('-', '_')}"
-
         RAGService._ensure_collection_exists(collection_name)
 
         embed_res = await client.embeddings.create(
-            model="text-embedding-ada-002", input=[query]
+            model="text-embedding-3-small",
+            input=query_text
         )
         query_vector = embed_res.data[0].embedding
 
-        search_results = qdrant.search(
+        search_res = qdrant.search(
             collection_name=collection_name,
             query_vector=query_vector,
-            limit=5,
-            score_threshold=0.72,
+            limit=5
         )
-
-        if not search_results:
-            yield "I could not find relevant information in your uploaded documents."
-            return
 
         context_blocks = []
-        for res in search_results:
-            payload = res.payload
+        for hit in search_res:
             context_blocks.append(
-                f"[{payload['filename']}, Page {payload['page_number']}]\n{payload['text']}"
+                f"[Source: {hit.payload.get('filename')}, Page {hit.payload.get('page_number')}]: {hit.payload.get('text')}"
             )
 
-        context_str = "\n\n---\n\n".join(context_blocks)
+        context_str = "\n\n".join(context_blocks) if context_blocks else "No relevant documents found."
 
-        system_prompt = (
-            "You are an AI Notes Assistant. Answer the user question STRICTLY using the provided document context. "
-            "Cite your sources using notation. If the context does not contain the answer, "
-            "clearly state that the information is not present in the notes."
+        system_instruction = (
+            "You are an AI assistant helping a developer answer questions using their uploaded PDF notes.\n"
+            "Use the provided context below to answer accurately. Cite sources when appropriate.\n\n"
+            f"--- CONTEXT FROM USER NOTES ---\n{context_str}"
         )
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": f"Context:\n{context_str}\n\nQuestion: {query}",
-            },
-        ]
-
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=messages, stream=True
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": query_text}
+            ],
+            stream=True
         )
 
         async for chunk in response:
-            content = chunk.choices[0].delta.content or ""
-            if content:
-                yield content
+            token = chunk.choices[0].delta.content or ""
+            if token:
+                yield token
