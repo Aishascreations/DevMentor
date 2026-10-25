@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, Float, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -83,6 +83,7 @@ class QuizResult(Base):
     score = Column(Integer, nullable=False)
     total_questions = Column(Integer, nullable=False)
     percentage = Column(Float, nullable=False)
+    questions = Column(JSONB, default=list)
     taken_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="quiz_results")

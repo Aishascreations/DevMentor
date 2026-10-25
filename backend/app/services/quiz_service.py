@@ -1,5 +1,5 @@
 ﻿import json
-from typing import List, Tuple
+from typing import List, Tuple, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,6 @@ from app.models import TopicMastery, QuizResult
 from app.schemas import QuizQuestion, QuizCompleteResponse
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
 
 class QuizService:
     @staticmethod
@@ -81,7 +80,7 @@ class QuizService:
 
     @staticmethod
     async def record_quiz_and_update_mastery(
-        db: AsyncSession, user_id: UUID, topic: str, score: int, total_questions: int
+        db: AsyncSession, user_id: UUID, topic: str, score: int, total_questions: int, questions: List[Any] = None
     ) -> QuizCompleteResponse:
         percentage = (
             (score / total_questions) * 100.0 if total_questions > 0 else 0.0
@@ -108,6 +107,7 @@ class QuizService:
             score=score,
             total_questions=total_questions,
             percentage=percentage,
+            questions=questions or [],
         )
         db.add(quiz_res)
 

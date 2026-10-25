@@ -17,6 +17,7 @@ interface QuizHistoryItem {
   score: number;
   total_questions: number;
   percentage: number;
+  questions: Question[];
   taken_at: string;
 }
 
@@ -31,7 +32,7 @@ export default function QuizPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<QuizHistoryItem[]>([]);
-  const [reviewQuiz, setReviewQuiz] = useState<QuizHistoryItem | null>(null);
+  const [selectedReview, setSelectedReview] = useState<QuizHistoryItem | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -63,7 +64,7 @@ export default function QuizPage() {
     setCurrentIdx(0);
     setSelectedAnswers({});
     setShowResults(false);
-    setReviewQuiz(null);
+    setSelectedReview(null);
 
     try {
       const token = getToken();
@@ -117,6 +118,7 @@ export default function QuizPage() {
           topic,
           score,
           total_questions: questions.length,
+          questions: questions,
         }),
       });
 
@@ -184,8 +186,8 @@ export default function QuizPage() {
             {error && <p className="text-xs text-red-400 text-center">{error}</p>}
           </form>
 
-          {/* Active Quiz Card */}
-          {questions.length > 0 && (
+          {/* Active Quiz View */}
+          {questions.length > 0 && !selectedReview && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
               <div className="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800 pb-4">
                 <span>Question {currentIdx + 1} of {questions.length}</span>
@@ -255,6 +257,51 @@ export default function QuizPage() {
               </div>
             </div>
           )}
+
+          {/* Historical Review View */}
+          {selectedReview && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Reviewing: {selectedReview.topic}</h2>
+                  <p className="text-xs text-slate-400">Score: {selectedReview.score}/{selectedReview.total_questions} ({selectedReview.percentage}%)</p>
+                </div>
+                <button
+                  onClick={() => setSelectedReview(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-white rounded-xl font-medium"
+                >
+                  Close Review
+                </button>
+              </div>
+
+              {selectedReview.questions && selectedReview.questions.length > 0 ? (
+                <div className="space-y-6">
+                  {selectedReview.questions.map((q, qIdx) => (
+                    <div key={qIdx} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+                      <p className="font-bold text-slate-200 text-sm">{qIdx + 1}. {q.question}</p>
+                      <div className="space-y-1.5 pl-2">
+                        {q.options.map((opt, oIdx) => (
+                          <div
+                            key={oIdx}
+                            className={`p-2 rounded-lg border ${
+                              oIdx === q.correct_index
+                                ? "bg-emerald-950/60 border-emerald-500 text-emerald-300 font-medium"
+                                : "bg-slate-900 border-slate-800 text-slate-400"
+                            }`}
+                          >
+                            <span className="font-bold mr-2">{String.fromCharCode(65 + oIdx)}.</span> {opt}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-indigo-400 font-medium pt-1">Explanation: {q.explanation}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">Question logs for older quizzes were not saved. New quiz attempts will store full question details!</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Quiz History Sidebar */}
@@ -267,8 +314,12 @@ export default function QuizPage() {
               {history.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => setReviewQuiz(item)}
-                  className="p-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700/60 cursor-pointer space-y-1 transition-all"
+                  onClick={() => setSelectedReview(item)}
+                  className={`p-3 rounded-xl border cursor-pointer space-y-1 transition-all ${
+                    selectedReview?.id === item.id
+                      ? "bg-indigo-600/30 border-indigo-500 text-white"
+                      : "bg-slate-800/50 hover:bg-slate-800 border-slate-700/60"
+                  }`}
                 >
                   <div className="flex justify-between text-xs font-medium">
                     <span className="text-indigo-400 font-bold">{item.topic}</span>
