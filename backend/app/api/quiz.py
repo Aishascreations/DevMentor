@@ -1,9 +1,10 @@
 ﻿from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.database import get_db
-from app.models import User
+from app.models import User, QuizResult
 from app.schemas import (
     QuizGenerateRequest,
     QuizStartRequest,
@@ -84,3 +85,19 @@ async def complete_quiz(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to record quiz completion: {str(e)}",
         )
+
+
+@router.get("/history")
+async def get_quiz_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = (
+        select(QuizResult)
+        .where(QuizResult.user_id == current_user.id)
+        .order_by(QuizResult.taken_at.desc())
+        .limit(30)
+    )
+    res = await db.execute(stmt)
+    results = res.scalars().all()
+    return results
