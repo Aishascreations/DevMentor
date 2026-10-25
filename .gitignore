@@ -1,0 +1,29 @@
+﻿# Environment variables (NEVER COMMIT SENSITIVE KEYS)
+.env
+*.env
+!.env.example
+
+# Python cache & virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Node & Next.js build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+.ds_store
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Database files
+*.db
+*.sqlite3
