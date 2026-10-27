@@ -23,14 +23,15 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
 
-# Register API Routers (routers inside app/api/ define their own /api/ prefixes)
+# Direct Router Registrations (Prefixes defined in each router file)
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(documents_router)

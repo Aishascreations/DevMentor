@@ -1,28 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-
 from app.database import get_db
 from app.models import User, UserProfile
-from app.schemas import (
-    UserRegister,
-    UserLogin,
-    TokenResponse,
-    UserProfileResponse,
-)
-from app.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    get_current_user,
-)
+from app.schemas import UserRegister, UserLogin, TokenResponse, UserProfileResponse
+from app.security import hash_password, verify_password, create_access_token, get_current_user
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
-
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
-    """FR-01: User Registration endpoint."""
     stmt_email = select(User).where(User.email == user_in.email)
     res_email = await db.execute(stmt_email)
     if res_email.scalar_one_or_none():
@@ -56,10 +43,8 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(data={"sub": str(new_user.id)})
     return TokenResponse(access_token=access_token)
 
-
 @router.post("/login", response_model=TokenResponse)
 async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    """FR-02: User Login endpoint."""
     stmt = select(User).where(User.email == user_in.email)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -74,13 +59,11 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(data={"sub": str(user.id)})
     return TokenResponse(access_token=access_token)
 
-
 @router.get("/me", response_model=UserProfileResponse)
 async def get_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """FR-04: Get current user profile details."""
     stmt = select(UserProfile).where(UserProfile.user_id == current_user.id)
     res = await db.execute(stmt)
     profile = res.scalar_one_or_none()
