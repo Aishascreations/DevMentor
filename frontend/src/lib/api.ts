@@ -1,6 +1,8 @@
 ﻿let RAW_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// Fix single-slash typos automatically if present
+// Clean up brackets [], quotes, and protocol typos if present
+RAW_API = RAW_API.replace(/[\[\]'"]/g, "").trim();
+
 if (RAW_API.startsWith("https:/") && !RAW_API.startsWith("https://")) {
   RAW_API = RAW_API.replace("https:/", "https://");
 }
@@ -9,14 +11,6 @@ if (RAW_API.startsWith("http:/") && !RAW_API.startsWith("http://")) {
 }
 
 const API_BASE = RAW_API.replace(/\/+$/, "");
-
-function normalizeEndpoint(endpoint: string): string {
-  const clean = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  if (clean.startsWith("/api/")) {
-    return clean;
-  }
-  return `/api${clean}`;
-}
 
 export function getToken(): string | null {
   if (typeof window !== "undefined") {
@@ -56,7 +50,8 @@ export async function apiFetch<T = any>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const fullUrl = `${API_BASE}${normalizeEndpoint(endpoint)}`;
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const fullUrl = `${API_BASE}${cleanEndpoint}`;
 
   const response = await fetch(fullUrl, {
     ...options,
@@ -88,7 +83,8 @@ export async function streamSSE(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const fullUrl = `${API_BASE}${normalizeEndpoint(endpoint)}`;
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const fullUrl = `${API_BASE}${cleanEndpoint}`;
 
   const response = await fetch(fullUrl, {
     method: "POST",
