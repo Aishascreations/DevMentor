@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const endpoint = isRegister ? "/auth/register" : "/auth/login";
+      const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
       const payload = isRegister
         ? { email, username, password }
         : { email, password };
