@@ -30,13 +30,13 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Register API Routers directly
-app.include_router(auth_router, prefix="/api")
-app.include_router(chat_router, prefix="/api")
-app.include_router(documents_router, prefix="/api")
-app.include_router(debug_router, prefix="/api")
-app.include_router(quiz_router, prefix="/api")
-app.include_router(analytics_router, prefix="/api")
+# Register API Routers (routers inside app/api/ define their own /api/ prefixes)
+app.include_router(auth_router)
+app.include_router(chat_router)
+app.include_router(documents_router)
+app.include_router(debug_router)
+app.include_router(quiz_router)
+app.include_router(analytics_router)
 
 
 @app.on_event("startup")
