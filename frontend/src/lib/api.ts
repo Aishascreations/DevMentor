@@ -1,16 +1,21 @@
-﻿const RAW_API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-// Ensure API_BASE always points to the backend root without trailing slashes
-const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
+﻿let RAW_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-/**
- * Normalizes endpoint paths to ensure they start with /api if not already present.
- */
+// Auto-fix single slash typo (https:/ -> https://) if present
+if (RAW_API.startsWith("https:/") && !RAW_API.startsWith("https://")) {
+  RAW_API = RAW_API.replace("https:/", "https://");
+}
+if (RAW_API.startsWith("http:/") && !RAW_API.startsWith("http://")) {
+  RAW_API = RAW_API.replace("http:/", "http://");
+}
+
+const API_BASE = RAW_API.replace(/\/+$/, "");
+
 function normalizeEndpoint(endpoint: string): string {
-  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  if (cleanEndpoint.startsWith("/api/")) {
-    return cleanEndpoint;
+  const clean = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  if (clean.startsWith("/api/")) {
+    return clean;
   }
-  return `/api${cleanEndpoint}`;
+  return `/api${clean}`;
 }
 
 export function getToken(): string | null {
