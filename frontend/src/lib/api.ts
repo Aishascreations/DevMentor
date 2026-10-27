@@ -1,6 +1,6 @@
 ﻿let RAW_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// Auto-fix single slash typo (https:/ -> https://) if present
+// Fix single-slash typos automatically if present
 if (RAW_API.startsWith("https:/") && !RAW_API.startsWith("https://")) {
   RAW_API = RAW_API.replace("https:/", "https://");
 }
