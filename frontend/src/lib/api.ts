@@ -1,18 +1,4 @@
-﻿let RAW_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-// Clean up brackets [], quotes, and protocol typos if present
-RAW_API = RAW_API.replace(/[\[\]'"]/g, "").trim();
-
-if (RAW_API.startsWith("https:/") && !RAW_API.startsWith("https://")) {
-  RAW_API = RAW_API.replace("https:/", "https://");
-}
-if (RAW_API.startsWith("http:/") && !RAW_API.startsWith("http://")) {
-  RAW_API = RAW_API.replace("http:/", "http://");
-}
-
-const API_BASE = RAW_API.replace(/\/+$/, "");
-
-export function getToken(): string | null {
+﻿export function getToken(): string | null {
   if (typeof window !== "undefined") {
     return (
       localStorage.getItem("devmentor_token") ||
@@ -51,9 +37,8 @@ export async function apiFetch<T = any>(
   }
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const fullUrl = `${API_BASE}${cleanEndpoint}`;
 
-  const response = await fetch(fullUrl, {
+  const response = await fetch(cleanEndpoint, {
     ...options,
     headers,
   });
@@ -84,9 +69,8 @@ export async function streamSSE(
   }
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const fullUrl = `${API_BASE}${cleanEndpoint}`;
 
-  const response = await fetch(fullUrl, {
+  const response = await fetch(cleanEndpoint, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
